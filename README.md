@@ -1,5 +1,5 @@
 # private-flake-overlays
-Add cooperate/private configurations and packages to your public flake.
+Add confidential or private configurations and packages to your public flake.
 
 ## Concept
 Serval solutions exsits for encrypting private nix-configs are secrets:
