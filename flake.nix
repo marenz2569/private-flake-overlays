@@ -11,6 +11,17 @@
         findDuplicate = n: v: builtins.length v > 1 && abort "nixosConfiguration ${n} cannot be duplicate in both public and private flake";
         _ = nixpkgs.lib.filterAttrs findDuplicate combinedNixosConfigurations;
         filteredNixosConfigurations = nixpkgs.lib.filterAttrs (k: v: k == "nixosConfigurations") flake;
-      in other // filteredNixosConfigurations;
+
+        mapMatchingNixosModule = name: config: if
+          flake ? nixosModules && flake.nixosModules ? name
+        then
+          config.extendModules {
+            modules = [
+              flake.nixosModules.${name}
+            ];
+          }
+        else
+          config;
+      in other // filteredNixosConfigurations // (nixpkgs.lib.mapAttrs mapMatchingNixosModule other);
   };
 }
