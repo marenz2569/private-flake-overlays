@@ -17,20 +17,23 @@
           builtins.length v > 1 && abort
           "nixosConfiguration ${n} cannot be duplicate in both public and private flake";
         _ = nixpkgs.lib.filterAttrs findDuplicate combinedNixosConfigurations;
-        filteredNixosConfigurations =
-          nixpkgs.lib.filterAttrs (k: v: k == "nixosConfigurations") flake;
 
-        overlayedNixosConfigurations = other // filteredNixosConfigurations;
+        overlayedNixosConfigurations = (other.nixosConfigurations or { })
+          // (flake.nixosConfigurations or { });
 
-        mapMatchingNixosModule = name: config:
-          if flake ? nixosModules && flake.nixosModules ? name then
-            config.extendModules { modules = [ flake.nixosModules.${name} ]; }
-          else
-            config;
-      in overlayedNixosConfigurations // (if other ? nixosConfigurations then {
-        nixosConfiguration =
-          nixpkgs.lib.mapAttrs mapMatchingNixosModule other.nixosConfigurations;
-      } else
-        { });
+        # filter out all modules where there is not a matching nixosConfiguration
+        filterModules = name: module: overlayedNixosConfigurations ? ${name};
+        modules =
+          nixpkgs.lib.filterAttrs filterModules (flake.nixosModules or { });
+
+        # function to apply a module to a nixosConfiguration
+        extendConfigurationWithModule = name: module:
+          overlayedNixosConfigurations.${name}.extendModules {
+            modules = [ module ];
+          };
+      in other // {
+        nixosConfigurations = overlayedNixosConfigurations
+          // (nixpkgs.lib.mapAttrs extendConfigurationWithModule modules);
+      };
   };
 }
